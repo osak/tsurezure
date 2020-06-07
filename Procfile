@@ -1,1 +1,1 @@
-web: ./target/release/tsurezure
+web: ROCKET_PORT=$PORT ./target/release/tsurezure
