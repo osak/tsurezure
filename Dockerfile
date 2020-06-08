@@ -1,5 +1,7 @@
 FROM ubuntu:18.04
 
-COPY target/debug/tsurezure /usr/local/bin
+COPY Rocket.toml /app/Rocket.toml
+COPY target/debug/tsurezure /app/tsurezure
 
-ENTRYPOINT ["/usr/local/bin/tsurezure"]
+ENTRYPOINT ["/app/tsurezure"]
+WORKDIR "/app"

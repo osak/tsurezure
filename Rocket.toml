@@ -1,0 +1,2 @@
+[global.databases.db]
+url = "postgres://tsurezure:tsurezure@db/tsurezure"
