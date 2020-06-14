@@ -1,4 +1,5 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder, get};
+use actix_web::{App, HttpResponse, HttpServer, Responder, get};
+use std::env;
 
 #[get("/")]
 async fn index() -> impl Responder {
@@ -7,11 +8,13 @@ async fn index() -> impl Responder {
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
+    let port: u32 = env::var("PORT").unwrap().parse().unwrap();
+
     HttpServer::new(|| {
         App::new()
             .service(index)
     })
-    .bind("0.0.0.0:8000")?
+    .bind(format!("0.0.0.0:{}", port))?
     .run()
     .await
 }

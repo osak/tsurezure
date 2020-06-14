@@ -1,5 +1,0 @@
-[development.databases.db]
-url = "postgres://tsurezure:tsurezure@db/tsurezure"
-
-[production.databases.db]
-url = "{{DATABASE_URL}}"
