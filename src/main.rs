@@ -1,8 +1,9 @@
-use actix::prelude::*;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder, get, Error};
-use tokio_postgres::{connect, Client, tls};
-use deadpool_postgres::{ClientWrapper, Pool};
+use tokio_postgres::{tls};
+use deadpool_postgres::{Pool};
 use url::{Url};
+use tsurezure::dao::posts::*;
+use tsurezure::model::*;
 
 #[get("/")]
 async fn index() -> impl Responder {
@@ -14,6 +15,12 @@ async fn dbtest(pool: web::Data<Pool>) -> Result<String, Error> {
     let client = pool.get().await.unwrap();
     let rows = client.query("SELECT * FROM test", &[]).await.unwrap();
     Ok(rows[0].get("msg"))
+}
+
+#[get("/posts/recent")]
+async fn recent_posts(pool: web::Data<Pool>) -> Result<web::Json<Vec<Post>>, Error> {
+    let posts = find_recent(&*pool.get().await.unwrap(), 5).await.unwrap();
+    Ok(web::Json(posts))
 }
 
 #[actix_rt::main]
@@ -37,6 +44,7 @@ async fn main() -> std::io::Result<()> {
             .data(pool.clone())
             .service(index)
             .service(dbtest)
+            .service(recent_posts)
     })
     .bind(format!("0.0.0.0:{}", port))?
     .run()

@@ -1,9 +1,11 @@
 extern crate chrono;
 
-use chrono::{Utc};
+use chrono::{DateTime, Utc};
+use serde::Serialize;
 
+#[derive(Serialize)]
 pub struct Post {
-    id: u32,
-    body: String,
-    posted_at: Utc,
+    pub id: i32,
+    pub body: String,
+    pub posted_at: DateTime<Utc>,
 }
