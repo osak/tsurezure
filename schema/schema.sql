@@ -1,0 +1,5 @@
+CREATE TABLE posts (
+    id INT GENERATED ALWAYS AS IDENTITY,
+    body TEXT NOT NULL,
+    posted_at TIMESTAMPTZ NOT NULL
+)
