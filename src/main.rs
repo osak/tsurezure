@@ -1,9 +1,21 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder, get, Error};
+use actix_web::{web, App, HttpResponse, HttpServer, Responder, get, post, Error};
 use tokio_postgres::{tls};
 use deadpool_postgres::{Pool};
 use url::{Url};
-use tsurezure::dao::posts::*;
+use serde::{Serialize, Deserialize};
+use tsurezure::dao::*;
 use tsurezure::model::*;
+
+#[derive(Deserialize, Debug)]
+struct CreatePostRequest {
+    body: String
+}
+
+#[derive(Serialize, Debug)]
+struct CreatePostResponse {
+    id: Option<i32>,
+    error: Option<String>,
+}
 
 #[get("/")]
 async fn index() -> impl Responder {
@@ -19,8 +31,19 @@ async fn dbtest(pool: web::Data<Pool>) -> Result<String, Error> {
 
 #[get("/posts/recent")]
 async fn recent_posts(pool: web::Data<Pool>) -> Result<web::Json<Vec<Post>>, Error> {
-    let posts = find_recent(&*pool.get().await.unwrap(), 5).await.unwrap();
+    let posts = posts::find_recent(&*pool.get().await.unwrap(), 5).await.unwrap();
     Ok(web::Json(posts))
+}
+
+#[post("/posts/new")]
+async fn create_post(payload: web::Json<CreatePostRequest>, pool: web::Data<Pool>) -> Result<web::Json<CreatePostResponse>, Error> {
+    let post = Post { id: 0, body: payload.body.clone(), posted_at: chrono::Utc::now() };
+    let result = posts::save(&*pool.get().await.unwrap(), post).await;
+    let response = match result {
+        Ok(id) => CreatePostResponse { id: Some(id), error: None },
+        Err(err) => CreatePostResponse { id: None, error: Some(format!("{}", err)) }
+    };
+    Ok(web::Json(response))
 }
 
 #[actix_rt::main]
@@ -45,6 +68,7 @@ async fn main() -> std::io::Result<()> {
             .service(index)
             .service(dbtest)
             .service(recent_posts)
+            .service(create_post)
     })
     .bind(format!("0.0.0.0:{}", port))?
     .run()
