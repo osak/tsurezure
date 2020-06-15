@@ -1,10 +1,15 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder, get, post, Error};
+use actix_web::{web, App, HttpResponse, HttpServer, Responder, get, post, Error, HttpRequest};
 use tokio_postgres::{tls};
 use deadpool_postgres::{Pool};
 use url::{Url};
 use serde::{Serialize, Deserialize};
 use tsurezure::dao::*;
 use tsurezure::model::*;
+
+#[derive(Clone)]
+struct Credential {
+    basic_auth: String
+}
 
 #[derive(Deserialize, Debug)]
 struct CreatePostRequest {
@@ -35,8 +40,26 @@ async fn recent_posts(pool: web::Data<Pool>) -> Result<web::Json<Vec<Post>>, Err
     Ok(web::Json(posts))
 }
 
+fn authenticate(credential: &Credential, req: &HttpRequest) -> Result<bool, actix_web::error::Error> {
+    let auth_header = match req.headers().get("Authorization") {
+        Some(val) => Ok(val),
+        None => Err(actix_web::error::ErrorUnauthorized("Auth needed"))
+    }?;
+
+    let tokens: Vec<&str> = auth_header.to_str().unwrap().split(' ').collect();
+    match tokens[0] {
+        "Basic" => Ok(tokens[1] == credential.basic_auth),
+        _ => Err(actix_web::error::ErrorBadRequest("Cannot recognize auth header"))
+    }
+}
+
 #[post("/posts/new")]
-async fn create_post(payload: web::Json<CreatePostRequest>, pool: web::Data<Pool>) -> Result<web::Json<CreatePostResponse>, Error> {
+async fn create_post(payload: web::Json<CreatePostRequest>, pool: web::Data<Pool>, credential: web::Data<Credential>, req: HttpRequest) -> Result<web::Json<CreatePostResponse>, Error> {
+    let authed = authenticate(&*credential, &req)?;
+    if !authed {
+        return Err(actix_web::error::ErrorUnauthorized("Invalid auth cred"))
+    }
+
     let post = Post { id: 0, body: payload.body.clone(), posted_at: chrono::Utc::now() };
     let result = posts::save(&*pool.get().await.unwrap(), post).await;
     let response = match result {
@@ -59,12 +82,16 @@ async fn main() -> std::io::Result<()> {
     cfg.dbname = Some(path_segments.next().unwrap().to_owned());
     cfg.host = Some(url.host_str().unwrap().to_owned());
     cfg.port = Some(url.port().unwrap());
-
     let pool = cfg.create_pool(tls::NoTls).unwrap();
+
+    let credential = Credential {
+        basic_auth: std::env::var("ADMIN_BASIC_AUTH").expect("ADMIN_BASIC_AUTH"),
+    };
 
     HttpServer::new(move || {
         App::new()
             .data(pool.clone())
+            .data(credential.clone())
             .service(index)
             .service(dbtest)
             .service(recent_posts)
