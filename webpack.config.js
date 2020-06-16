@@ -1,6 +1,18 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack');
 
+let constants;
+if (process.env.NODE_ENV == 'production') {
+    constants = {
+        API_BASE: JSON.stringify('https://tsurezure.herokuapp.com'),
+    };
+} else {
+    constants = {
+        API_BASE: JSON.stringify('http://localhost:8000'),
+    }
+}
+ 
 module.exports = {
     entry: './web/index.tsx',
     devtool: 'source-map',
@@ -27,6 +39,7 @@ module.exports = {
     plugins: [
         new HtmlWebpackPlugin({
             template: './web/index.html'
-        })
+        }),
+        new webpack.DefinePlugin(constants),
     ],
 }

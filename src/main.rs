@@ -1,4 +1,5 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder, get, post, Error, HttpRequest};
+use actix_cors::Cors;
 use tokio_postgres::{tls};
 use deadpool_postgres::{Pool};
 use url::{Url};
@@ -90,6 +91,9 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .wrap(
+                Cors::new()
+                    .finish())
             .data(pool.clone())
             .data(credential.clone())
             .service(index)
