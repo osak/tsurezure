@@ -48,6 +48,7 @@ module.exports = {
             patterns: [
                 { from: './web/style.css', to: 'style.css' }
             ]
-        })
+        }),
+        new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
     ],
 }
