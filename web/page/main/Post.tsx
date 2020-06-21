@@ -8,9 +8,10 @@ export type Props = {
 export function Post(props: Props) {
     const post = props.post;
 
-    return <div>
-        <div><a id={`post-${post.id}`}>■</a></div>
-        <div>{post.body}</div>
-        <div>{post.posted_at}</div>
-    </div>;
+    const anchor = `post-${post.id}`;
+    return <article className="article">
+        <header className="header"><a id={anchor} href={`#${anchor}`}>■</a></header>
+        <section className="body">{post.body}</section>
+        <div className="posted-at">{post.posted_at}</div>
+    </article>;
 }

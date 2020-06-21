@@ -13,7 +13,7 @@ export function Main() {
             .catch((err) => console.error(err));
     }, []);
 
-    return <div>
+    return <div className="main">
         {posts.map((post) => <Post post={post} key={post.id}/>)}
     </div>;
 }

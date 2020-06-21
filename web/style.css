@@ -1,0 +1,26 @@
+.main {
+    margin-left: 20px;
+    width: 50vw;
+}
+
+.header {
+    font-size: 120%;
+}
+
+.article {
+    padding-top: 1em;
+}
+
+.article + .article {
+    border-top: 1px solid lightgray;
+    margin-top: 1em;
+}
+
+.body {
+    margin: 5px 0;
+}
+
+.posted-at {
+    color: gray;
+    font-size: 80%;
+}
