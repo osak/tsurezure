@@ -1,3 +1,8 @@
+#title {
+    margin-left: 20px;
+    border-bottom: 1px solid gray;
+}
+
 .main {
     margin-left: 20px;
     width: 50vw;
