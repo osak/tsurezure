@@ -62,8 +62,8 @@ async fn get_posts(pool: web::Data<Pool>, web::Query(query): web::Query<PostsReq
     let client = pool.get().await.unwrap();
 
     let mut posts = match query.from {
-        Some(from_id) => posts::find(&*client, from_id, (limit + 1).into()).await,
-        None => posts::find_recent(&*client, (limit + 1).into()).await,
+        Some(from_id) => posts::find(&*client, from_id, limit + 1).await,
+        None => posts::find_recent(&*client, limit + 1).await,
     }.unwrap();
     let next_id = if posts.len() == (limit + 1) as usize {
         Some(posts.last().unwrap().id)

@@ -11,14 +11,14 @@ fn parse_row(row: &Row) -> Post {
     }
 }
 
-pub async fn find_recent(client: &ClientWrapper, limit: i64) -> Result<Vec<Post>, DBError> {
-    let rows: Vec<Row> = client.query("SELECT * FROM posts ORDER BY posted_at DESC LIMIT $1", &[&limit]).await.unwrap();
+pub async fn find_recent(client: &ClientWrapper, limit: u32) -> Result<Vec<Post>, DBError> {
+    let rows: Vec<Row> = client.query("SELECT * FROM posts ORDER BY posted_at DESC LIMIT $1", &[&(limit as i64)]).await.unwrap();
     let posts = rows.into_iter().map(|row| parse_row(&row)).collect();
     Ok(posts)
 }
 
-pub async fn find(client: &ClientWrapper, from_id: i32, limit: i64) -> Result<Vec<Post>, DBError> {
-    let rows: Vec<Row> = client.query("SELECT * FROM posts WHERE id <= $1 ORDER BY posted_at DESC LIMIT $2", &[&from_id, &limit]).await.unwrap();
+pub async fn find(client: &ClientWrapper, from_id: i32, limit: u32) -> Result<Vec<Post>, DBError> {
+    let rows: Vec<Row> = client.query("SELECT * FROM posts WHERE id <= $1 ORDER BY posted_at DESC LIMIT $2", &[&from_id, &(limit as i64)]).await.unwrap();
     let posts = rows.into_iter().map(|row| parse_row(&row)).collect();
     Ok(posts)
 }
