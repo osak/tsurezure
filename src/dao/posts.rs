@@ -3,15 +3,23 @@ use tokio_postgres::{Row};
 use crate::model::Post;
 use crate::dao::DBError;
 
+fn parse_row(row: &Row) -> Post {
+    Post {
+        id: row.get("id"),
+        body: row.get("body"),
+        posted_at: row.get("posted_at"),
+    }
+}
+
 pub async fn find_recent(client: &ClientWrapper, limit: i64) -> Result<Vec<Post>, DBError> {
     let rows: Vec<Row> = client.query("SELECT * FROM posts ORDER BY posted_at DESC LIMIT $1", &[&limit]).await.unwrap();
-    let posts = rows.into_iter().map(|row| {
-        Post {
-            id: row.get("id"),
-            body: row.get("body"),
-            posted_at: row.get("posted_at"),
-        }
-    }).collect();
+    let posts = rows.into_iter().map(|row| parse_row(&row)).collect();
+    Ok(posts)
+}
+
+pub async fn find(client: &ClientWrapper, from_id: i32, limit: i64) -> Result<Vec<Post>, DBError> {
+    let rows: Vec<Row> = client.query("SELECT * FROM posts WHERE id <= $1 ORDER BY posted_at DESC LIMIT $2", &[&from_id, &limit]).await.unwrap();
+    let posts = rows.into_iter().map(|row| parse_row(&row)).collect();
     Ok(posts)
 }
 

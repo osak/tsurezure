@@ -23,6 +23,18 @@ struct CreatePostResponse {
     error: Option<String>,
 }
 
+#[derive(Deserialize)]
+struct PostsRequest {
+    from: Option<i32>,
+    limit: Option<u32>,
+}
+
+#[derive(Serialize)]
+struct PostsResponse {
+    posts: Vec<Post>,
+    next: Option<i32>,
+}
+
 #[get("/")]
 async fn index() -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
@@ -39,6 +51,32 @@ async fn dbtest(pool: web::Data<Pool>) -> Result<String, Error> {
 async fn recent_posts(pool: web::Data<Pool>) -> Result<web::Json<Vec<Post>>, Error> {
     let posts = posts::find_recent(&*pool.get().await.unwrap(), 5).await.unwrap();
     Ok(web::Json(posts))
+}
+
+#[get("/posts")]
+async fn get_posts(pool: web::Data<Pool>, web::Query(query): web::Query<PostsRequest>) -> Result<web::Json<PostsResponse>, Error> {
+    let limit = query.limit.unwrap_or(5);
+    if limit > 50 {
+        return Err(actix_web::error::ErrorBadRequest("limit must be <= 50"))
+    }
+    let client = pool.get().await.unwrap();
+
+    let mut posts = match query.from {
+        Some(from_id) => posts::find(&*client, from_id, (limit + 1).into()).await,
+        None => posts::find_recent(&*client, (limit + 1).into()).await,
+    }.unwrap();
+    let next_id = if posts.len() == (limit + 1) as usize {
+        Some(posts.last().unwrap().id)
+    } else {
+        None
+    };
+
+    posts.truncate(limit as usize);
+    let response = PostsResponse {
+        posts: posts,
+        next: next_id,
+    };
+    Ok(web::Json(response))
 }
 
 fn authenticate(credential: &Credential, req: &HttpRequest) -> Result<bool, actix_web::error::Error> {
@@ -99,6 +137,7 @@ async fn main() -> std::io::Result<()> {
             .service(index)
             .service(dbtest)
             .service(recent_posts)
+            .service(get_posts)
             .service(create_post)
     })
     .bind(format!("0.0.0.0:{}", port))?
