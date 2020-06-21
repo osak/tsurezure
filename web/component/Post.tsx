@@ -13,7 +13,7 @@ export function Post(props: Props) {
     const postedAt = moment(post.posted_at).format('YYYY-MM-DD HH:mm:ssZ');
     return <article className="article">
         <header className="header"><Link to={`/posts/${post.id}`}>■</Link></header>
-        <section className="body">{post.body}</section>
+        <section className="body" dangerouslySetInnerHTML={{__html: post.body}} />
         <div className="posted-at">{postedAt}</div>
     </article>;
 }
