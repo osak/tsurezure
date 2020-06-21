@@ -15,9 +15,9 @@ export function Main(props: Props) {
     const fromParam = urlParams.get('from');
 
     useEffect(() => {
-        let url = '/posts';
+        let url = '/posts?limit=20';
         if (fromParam != undefined) {
-            url += `?from=${fromParam}`
+            url += `&from=${fromParam}`
         }
         fetchApi<PostsResponse>(url)
             .then((result) => setResponse(result))
