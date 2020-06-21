@@ -32,18 +32,6 @@ struct PostsResponse {
     next: Option<i32>,
 }
 
-#[get("/")]
-async fn index() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
-}
-
-#[get("/dbtest")]
-async fn dbtest(pool: web::Data<Pool>) -> Result<String, Error> {
-    let client = pool.get().await.unwrap();
-    let rows = client.query("SELECT * FROM test", &[]).await.unwrap();
-    Ok(rows[0].get("msg"))
-}
-
 #[get("/api/posts/recent")]
 async fn recent_posts(pool: web::Data<Pool>) -> Result<web::Json<Vec<Post>>, Error> {
     let posts = posts::find_recent(&*pool.get().await.unwrap(), 5).await.unwrap();
@@ -144,8 +132,6 @@ async fn main() -> std::io::Result<()> {
                 Cors::new()
                     .finish())
             .data(pool.clone())
-            .service(index)
-            .service(dbtest)
             .service(recent_posts)
             .service(get_posts)
             .service(web::scope("/")
