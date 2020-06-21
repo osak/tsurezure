@@ -1,16 +1,13 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder, get, post, Error, HttpRequest};
+use actix_files as fs;
+use actix_web::{web, App, HttpResponse, HttpServer, Responder, get, post, Error, dev::ServiceRequest};
 use actix_cors::Cors;
+use actix_web_httpauth::{middleware::HttpAuthentication, extractors::basic::BasicAuth};
 use tokio_postgres::{tls};
 use deadpool_postgres::{Pool};
 use url::{Url};
 use serde::{Serialize, Deserialize};
 use tsurezure::dao::*;
 use tsurezure::model::*;
-
-#[derive(Clone)]
-struct Credential {
-    basic_auth: String
-}
 
 #[derive(Deserialize, Debug)]
 struct CreatePostRequest {
@@ -79,26 +76,13 @@ async fn get_posts(pool: web::Data<Pool>, web::Query(query): web::Query<PostsReq
     Ok(web::Json(response))
 }
 
-fn authenticate(credential: &Credential, req: &HttpRequest) -> Result<bool, actix_web::error::Error> {
-    let auth_header = match req.headers().get("Authorization") {
-        Some(val) => Ok(val),
-        None => Err(actix_web::error::ErrorUnauthorized("Auth needed"))
-    }?;
-
-    let tokens: Vec<&str> = auth_header.to_str().unwrap().split(' ').collect();
-    match tokens[0] {
-        "Basic" => Ok(tokens[1] == credential.basic_auth),
-        _ => Err(actix_web::error::ErrorBadRequest("Cannot recognize auth header"))
-    }
+#[get("/posts/new")]
+async fn create_post_page() -> Result<fs::NamedFile, std::io::Error> {
+    fs::NamedFile::open("asset/post.html")
 }
 
 #[post("/posts/new")]
-async fn create_post(payload: web::Json<CreatePostRequest>, pool: web::Data<Pool>, credential: web::Data<Credential>, req: HttpRequest) -> Result<web::Json<CreatePostResponse>, Error> {
-    let authed = authenticate(&*credential, &req)?;
-    if !authed {
-        return Err(actix_web::error::ErrorUnauthorized("Invalid auth cred"))
-    }
-
+async fn create_post(payload: web::Form<CreatePostRequest>, pool: web::Data<Pool>) -> Result<web::Json<CreatePostResponse>, Error> {
     let post = Post { id: 0, body: payload.body.clone(), posted_at: chrono::Utc::now() };
     let result = posts::save(&*pool.get().await.unwrap(), post).await;
     let response = match result {
@@ -106,6 +90,23 @@ async fn create_post(payload: web::Json<CreatePostRequest>, pool: web::Data<Pool
         Err(err) => CreatePostResponse { id: None, error: Some(format!("{}", err)) }
     };
     Ok(web::Json(response))
+}
+
+async fn validator(req: ServiceRequest, cred: BasicAuth) -> Result<ServiceRequest, Error> {
+    let path = req.path();
+    if path != "/posts/new" {
+        return Ok(req)
+    }
+
+    let admin_user = std::env::var("ADMIN_USER").expect("ADMIN_USER");
+    let admin_pass = std::env::var("ADMIN_PASS").expect("ADMIN_PASS");
+    let cred_user = cred.user_id();
+    let cred_pass = cred.password().unwrap();
+    if *cred_user == admin_user && *cred_pass == admin_pass {
+        Ok(req)
+    } else {
+        Err(actix_web::error::ErrorUnauthorized("Auth failed"))
+    }
 }
 
 #[actix_rt::main]
@@ -123,22 +124,21 @@ async fn main() -> std::io::Result<()> {
     cfg.port = Some(url.port().unwrap());
     let pool = cfg.create_pool(tls::NoTls).unwrap();
 
-    let credential = Credential {
-        basic_auth: std::env::var("ADMIN_BASIC_AUTH").expect("ADMIN_BASIC_AUTH"),
-    };
-
     HttpServer::new(move || {
+        let auth = HttpAuthentication::basic(validator);
         App::new()
             .wrap(
                 Cors::new()
                     .finish())
             .data(pool.clone())
-            .data(credential.clone())
             .service(index)
             .service(dbtest)
             .service(recent_posts)
             .service(get_posts)
-            .service(create_post)
+            .service(web::scope("/")
+                .wrap(auth)
+                .service(create_post_page)
+                .service(create_post))
     })
     .bind(format!("0.0.0.0:{}", port))?
     .run()

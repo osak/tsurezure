@@ -8,6 +8,8 @@ services:
         environment:
             PORT: "8000"
             DATABASE_URL: "postgres://tsurezure:tsurezure@db:5432/tsurezure"
+            ADMIN_USER: "osak"
+            ADMIN_PASS: "azusa"
         depends_on:
             - "db"
     db:
