@@ -1,5 +1,5 @@
 use actix_files as fs;
-use actix_web::{web, App, HttpResponse, HttpServer, Responder, get, post, Error, dev::ServiceRequest};
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder, get, post, Error, dev::ServiceRequest};
 use actix_cors::Cors;
 use actix_web_httpauth::{middleware::HttpAuthentication, extractors::basic::BasicAuth};
 use tokio_postgres::{tls};
@@ -97,6 +97,14 @@ async fn create_post(payload: web::Form<CreatePostRequest>, pool: web::Data<Pool
     Ok(web::Json(response))
 }
 
+async fn default_route(req: HttpRequest) -> Result<fs::NamedFile, std::io::Error> {
+    match req.path() {
+        "/bundle.js" => fs::NamedFile::open("web-dist/bundle.js"),
+        "/style.css" => fs::NamedFile::open("web-dist/style.css"),
+        _ => fs::NamedFile::open("web-dist/index.html")
+    }
+}
+
 async fn validator(req: ServiceRequest, cred: BasicAuth) -> Result<ServiceRequest, Error> {
     let path = req.path();
     if path != "/posts/new" {
@@ -144,6 +152,7 @@ async fn main() -> std::io::Result<()> {
                 .wrap(auth)
                 .service(create_post_page)
                 .service(create_post))
+            .default_service(web::resource("").route(web::get().to(default_route)))
     })
     .bind(format!("0.0.0.0:{}", port))?
     .run()
