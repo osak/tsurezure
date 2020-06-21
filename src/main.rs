@@ -83,7 +83,12 @@ async fn create_post_page() -> Result<fs::NamedFile, std::io::Error> {
 
 #[post("/posts/new")]
 async fn create_post(payload: web::Form<CreatePostRequest>, pool: web::Data<Pool>) -> Result<web::Json<CreatePostResponse>, Error> {
-    let post = Post { id: 0, body: payload.body.clone(), posted_at: chrono::Utc::now() };
+    let body = payload.body.split("\n")
+        .into_iter()
+        .map(|line| format!("<p>{}</p>", line))
+        .collect::<Vec<String>>()
+        .join("");
+    let post = Post { id: 0, body: body, posted_at: chrono::Utc::now() };
     let result = posts::save(&*pool.get().await.unwrap(), post).await;
     let response = match result {
         Ok(id) => CreatePostResponse { id: Some(id), error: None },
