@@ -1,23 +1,33 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { RouteComponentProps } from '@reach/router';
+import { RouteComponentProps, Link, useLocation } from '@reach/router';
 
 import { Post } from './Post';
-import { Model } from '../../model';
-import { fetchApi } from '../../func/api';
+import { fetchApi, PostsResponse } from '../../func/api';
+import { Paginator } from './Paginator';
 
 type Props = RouteComponentProps;
 
 export function Main(props: Props) {
-    const [posts, setPosts] = useState([] as Model.Post[]);
+    const [response, setResponse] = useState(null as (PostsResponse | null));
+    const location = useLocation();
+    const urlParams = new URLSearchParams(location.search);
+    const fromParam = urlParams.get('from');
 
     useEffect(() => {
-        fetchApi<Model.Post[]>('/posts/recent')
-            .then((result) => setPosts(result))
+        let url = '/posts';
+        if (fromParam != undefined) {
+            url += `?from=${fromParam}`
+        }
+        fetchApi<PostsResponse>(url)
+            .then((result) => setResponse(result))
             .catch((err) => console.error(err));
-    }, []);
+    }, [fromParam]);
 
     return <div className="main">
-        {posts.map((post) => <Post post={post} key={post.id}/>)}
+        {response && response.posts.map((post) => <Post post={post} key={post.id}/>)}
+        <nav className="nav">
+            <Paginator response={response} />
+        </nav>
     </div>;
 }

@@ -1,6 +1,13 @@
 // Injected by DefinePlugin
 declare var API_BASE: string;
 
+import { Model } from '../model';
+
+export type PostsResponse = {
+    posts: Model.Post[],
+    next: number | null
+}
+
 export async function fetchApi<T>(api: string): Promise<T> {
     const url = API_BASE + normalize(api);
     const response = await fetch(url);
