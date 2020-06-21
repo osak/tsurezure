@@ -1,5 +1,5 @@
 use actix_files as fs;
-use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder, get, post, Error, dev::ServiceRequest};
+use actix_web::{web, App, HttpRequest, HttpServer, get, post, Error, dev::ServiceRequest};
 use actix_cors::Cors;
 use actix_web_httpauth::{middleware::HttpAuthentication, extractors::basic::BasicAuth};
 use tokio_postgres::{tls};
