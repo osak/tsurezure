@@ -44,13 +44,13 @@ async fn dbtest(pool: web::Data<Pool>) -> Result<String, Error> {
     Ok(rows[0].get("msg"))
 }
 
-#[get("/posts/recent")]
+#[get("/api/posts/recent")]
 async fn recent_posts(pool: web::Data<Pool>) -> Result<web::Json<Vec<Post>>, Error> {
     let posts = posts::find_recent(&*pool.get().await.unwrap(), 5).await.unwrap();
     Ok(web::Json(posts))
 }
 
-#[get("/posts")]
+#[get("/api/posts")]
 async fn get_posts(pool: web::Data<Pool>, web::Query(query): web::Query<PostsRequest>) -> Result<web::Json<PostsResponse>, Error> {
     let limit = query.limit.unwrap_or(5);
     if limit > 50 {

@@ -6,11 +6,11 @@ const webpack = require('webpack');
 let constants;
 if (process.env.NODE_ENV == 'production') {
     constants = {
-        API_BASE: JSON.stringify('https://tsurezure.herokuapp.com'),
+        API_BASE: JSON.stringify('https://tsurezure.herokuapp.com/api'),
     };
 } else {
     constants = {
-        API_BASE: JSON.stringify('http://localhost:8000'),
+        API_BASE: JSON.stringify('http://localhost:8000/api'),
     }
 }
  
