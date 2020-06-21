@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { RouteComponentProps, Link, useLocation } from '@reach/router';
 
-import { Post } from './Post';
+import { Post } from '../../component/Post';
 import { fetchApi, PostsResponse } from '../../func/api';
 import { Paginator } from './Paginator';
 

@@ -8,6 +8,10 @@ export type PostsResponse = {
     next: number | null
 }
 
+export type SinglePostResponse = {
+    post: Model.Post
+}
+
 export async function fetchApi<T>(api: string): Promise<T> {
     const url = API_BASE + normalize(api);
     const response = await fetch(url);

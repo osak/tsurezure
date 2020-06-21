@@ -19,6 +19,7 @@ module.exports = {
     devtool: 'source-map',
     devServer: {
         host: '0.0.0.0',
+        historyApiFallback: true,
     },
 
     module: {
@@ -36,6 +37,7 @@ module.exports = {
     output: {
         filename: 'bundle.js',
         path: path.resolve(__dirname, 'web-dist'),
+        publicPath: '/',
     },
     plugins: [
         new HtmlWebpackPlugin({
