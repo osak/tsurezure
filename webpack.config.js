@@ -41,7 +41,8 @@ module.exports = {
     },
     plugins: [
         new HtmlWebpackPlugin({
-            template: './web/index.html'
+            template: './web/index.html',
+            hash: true,
         }),
         new webpack.DefinePlugin(constants),
         new CopyPlugin({
