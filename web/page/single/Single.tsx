@@ -13,7 +13,7 @@ export function Single(props: Props) {
     const [response, setResponse] = useState(null as (PostsResponse | null));
 
     useEffect(() => {
-        let url = `/posts?from_id=${props.id}&limit=1`;
+        let url = `/posts?from=${props.id}&limit=1`;
         fetchApi<PostsResponse>(url)
             .then((result) => setResponse(result))
             .catch((err) => console.error(err));
