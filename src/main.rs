@@ -1,5 +1,5 @@
 use actix_files as fs;
-use actix_web::{web, App, HttpRequest, HttpServer, get, post, Error, dev::ServiceRequest};
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, get, post, Error, dev::ServiceRequest};
 use actix_cors::Cors;
 use actix_web_httpauth::{middleware::HttpAuthentication, extractors::basic::BasicAuth};
 use tokio_postgres::{tls};
@@ -85,11 +85,19 @@ async fn create_post(payload: web::Form<CreatePostRequest>, pool: web::Data<Pool
     Ok(web::Json(response))
 }
 
-async fn default_route(req: HttpRequest) -> Result<fs::NamedFile, std::io::Error> {
+async fn default_route(req: HttpRequest) -> Result<HttpResponse, std::io::Error> {
+    use actix_web::http::header::{HeaderName, HeaderValue};
+
     match req.path() {
-        "/bundle.js" => fs::NamedFile::open("web-dist/bundle.js"),
-        "/style.css" => fs::NamedFile::open("web-dist/style.css"),
+        "/bundle.js" => fs::NamedFile::open("web-dist/bundle.js").map(|n| n.into_response(&req).unwrap()),
+        "/style.css" => fs::NamedFile::open("web-dist/style.css").map(|n| n.into_response(&req).unwrap()),
         _ => fs::NamedFile::open("web-dist/index.html")
+              .map(|n| {
+                  let mut resp = n.into_response(&req).unwrap();
+                  let headers = resp.headers_mut();
+                  headers.append(HeaderName::from_static("cache-control"), HeaderValue::from_static("no-cache"));
+                  resp
+              })
     }
 }
 
