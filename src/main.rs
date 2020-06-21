@@ -103,7 +103,7 @@ async fn default_route(req: HttpRequest) -> Result<HttpResponse, std::io::Error>
 
 async fn validator(req: ServiceRequest, cred: BasicAuth) -> Result<ServiceRequest, Error> {
     let path = req.path();
-    if path != "/posts/new" {
+    if !path.starts_with("/admin") {
         return Ok(req)
     }
 
@@ -142,7 +142,7 @@ async fn main() -> std::io::Result<()> {
             .data(pool.clone())
             .service(recent_posts)
             .service(get_posts)
-            .service(web::scope("/")
+            .service(web::scope("/admin")
                 .wrap(auth)
                 .service(create_post_page)
                 .service(create_post))
