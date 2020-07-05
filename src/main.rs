@@ -8,6 +8,7 @@ use url::{Url};
 use serde::{Serialize, Deserialize};
 use tsurezure::dao::*;
 use tsurezure::model::*;
+use tsurezure::view;
 
 #[derive(Deserialize, Debug)]
 struct CreatePostRequest {
@@ -28,14 +29,17 @@ struct PostsRequest {
 
 #[derive(Serialize)]
 struct PostsResponse {
-    posts: Vec<Post>,
+    posts: Vec<view::Post>,
     next: Option<i32>,
 }
 
 #[get("/api/posts/recent")]
-async fn recent_posts(pool: web::Data<Pool>) -> Result<web::Json<Vec<Post>>, Error> {
-    let posts = posts::find_recent(&*pool.get().await.unwrap(), 5).await.unwrap();
-    Ok(web::Json(posts))
+async fn recent_posts(pool: web::Data<Pool>) -> Result<web::Json<Vec<view::Post>>, Error> {
+    let raw_posts = posts::find_recent(&*pool.get().await.unwrap(), 5).await.unwrap();
+    let view_posts: Vec<view::Post> = raw_posts.into_iter()
+      .map(|p| p.into())
+      .collect();
+    Ok(web::Json(view_posts))
 }
 
 #[get("/api/posts")]
@@ -57,8 +61,11 @@ async fn get_posts(pool: web::Data<Pool>, web::Query(query): web::Query<PostsReq
     };
 
     posts.truncate(limit as usize);
+    let view_posts: Vec<view::Post> = posts.into_iter()
+      .map(|p| p.into())
+      .collect();
     let response = PostsResponse {
-        posts: posts,
+        posts: view_posts,
         next: next_id,
     };
     Ok(web::Json(response))
@@ -71,12 +78,7 @@ async fn create_post_page() -> Result<fs::NamedFile, std::io::Error> {
 
 #[post("/posts/new")]
 async fn create_post(payload: web::Form<CreatePostRequest>, pool: web::Data<Pool>) -> Result<web::Json<CreatePostResponse>, Error> {
-    let body = payload.body.split("\n")
-        .into_iter()
-        .map(|line| format!("<p>{}</p>", line))
-        .collect::<Vec<String>>()
-        .join("");
-    let post = Post { id: 0, body: body, posted_at: chrono::Utc::now() };
+    let post = Post { id: 0, body: payload.body.to_owned(), posted_at: chrono::Utc::now() };
     let result = posts::save(&*pool.get().await.unwrap(), post).await;
     let response = match result {
         Ok(id) => CreatePostResponse { id: Some(id), error: None },
