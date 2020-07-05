@@ -126,7 +126,7 @@ async fn validator(req: ServiceRequest, cred: BasicAuth) -> Result<ServiceReques
     }
 }
 
-#[get("/")]
+#[get("")]
 async fn login(id: Identity) -> HttpResponse {
     id.remember("admin".to_owned());
     HttpResponse::Ok().finish()
