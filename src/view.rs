@@ -12,9 +12,14 @@ pub struct Post {
 
 impl From<model::Post> for Post {
     fn from(other: model::Post) -> Post {
+        let formatted_body = other.body.split("\n")
+            .into_iter()
+            .map(|line| format!("<p>{}</p>", line))
+            .collect::<Vec<String>>()
+            .join("");
         Post {
             id: other.id,
-            body: other.body,
+            body: formatted_body,
             posted_at: other.posted_at
         }
     }
