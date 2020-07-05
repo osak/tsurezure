@@ -147,10 +147,12 @@ async fn main() -> std::io::Result<()> {
     cfg.port = Some(url.port().unwrap());
     let pool = cfg.create_pool(tls::NoTls).unwrap();
 
+    let cookie_key = std::env::var("COOKIE_KEY").expect("COOKIE_KEY");
+
     HttpServer::new(move || {
         let auth = HttpAuthentication::basic(validator);
         let identity = IdentityService::new(
-            CookieIdentityPolicy::new(&[0; 32])
+            CookieIdentityPolicy::new(&cookie_key.as_bytes())
                 .name("auth")
                 .secure(false));
         let cors = Cors::new().finish();

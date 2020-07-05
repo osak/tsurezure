@@ -10,6 +10,7 @@ services:
             DATABASE_URL: "postgres://tsurezure:tsurezure@db:5432/tsurezure"
             ADMIN_USER: "osak"
             ADMIN_PASS: "azusa"
+            COOKIE_KEY: "12345678901234567890123456789012"
         depends_on:
             - "db"
     db:
