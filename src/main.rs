@@ -1,5 +1,5 @@
 use actix_files as fs;
-use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, get, post, Error, dev::ServiceRequest};
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, get, post, put, Error, dev::ServiceRequest};
 use actix_cors::Cors;
 use actix_identity::{Identity, CookieIdentityPolicy, IdentityService};
 use actix_web_httpauth::{middleware::HttpAuthentication, extractors::basic::BasicAuth};
@@ -42,6 +42,12 @@ struct AdminGetPostInfo {
 #[derive(Serialize)]
 struct AdminGetPostResponse {
     post: view::RawPost
+}
+
+#[derive(Deserialize)]
+struct UpdatePostRequest {
+    id: i32,
+    body: String,
 }
 
 #[get("/api/posts/recent")]
@@ -124,6 +130,32 @@ async fn create_post(payload: web::Form<CreatePostRequest>, pool: web::Data<Pool
         Err(err) => CreatePostResponse { id: None, error: Some(format!("{}", err)) }
     };
     Ok(web::Json(response))
+}
+
+#[put("/api/posts/{id}")]
+async fn update_post(payload: web::Json<UpdatePostRequest>, pool: web::Data<Pool>, id: Identity) -> Result<web::Json<CreatePostResponse>, Error> {
+    match id.identity() {
+        Some(name) if name == "admin" => Ok(()),
+        Some(_) => Err(actix_web::error::ErrorForbidden("Admin only".to_owned())),
+        None => Err(actix_web::error::ErrorUnauthorized("Auth needed".to_owned()))
+    }?;
+
+    let client = pool.get().await.unwrap();
+    let posts = posts::find(&*client, payload.id, 1).await?;
+    if posts.len() > 0 {
+        let post = &posts[0];
+        let new_post = Post {
+            id: payload.id,
+            body: payload.body.to_owned(),
+            posted_at: post.posted_at
+        };
+        posts::update(&*client, &new_post)
+            .await
+            .map(|id| web::Json(CreatePostResponse { id: Some(id), error: None }))
+            .map_err(|e| e.into())
+    } else {
+        Err(actix_web::error::ErrorNotFound("Not found"))
+    }
 }
 
 async fn default_route(req: HttpRequest) -> Result<HttpResponse, std::io::Error> {
@@ -213,6 +245,7 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/admin")
                 .service(admin_get_post)
                 .service(create_post)
+                .service(update_post)
                 .default_service(web::resource("").route(web::get().to(default_admin_route))))
             .default_service(web::resource("").route(web::get().to(default_route)))
     })

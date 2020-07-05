@@ -29,3 +29,10 @@ pub async fn save(client: &ClientWrapper, post: Post) -> Result<i32, DBError> {
         .map_err(|err| DBError::new("Failed to save a post", err))?;
     Ok(rows[0].get(0))
 }
+
+pub async fn update(client: &ClientWrapper, post: &Post) -> Result<i32, DBError> {
+    let rows: Vec<Row> = client.query("UPDATE posts SET body=$1 WHERE id=$2 RETURNING id", &[&post.body, &post.id])
+        .await
+        .map_err(|err| DBError::new(&format!("Failed to update a post {}", post.id), err))?;
+    Ok(rows[0].get(0))
+}

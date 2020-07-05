@@ -1,3 +1,4 @@
+use actix_web;
 use std::error::Error;
 use std::fmt;
 
@@ -25,5 +26,11 @@ impl fmt::Display for DBError {
 impl Error for DBError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         Some(&self.source)
+    }
+}
+
+impl From<DBError> for actix_web::Error {
+    fn from(e: DBError) -> actix_web::Error {
+        actix_web::error::ErrorInternalServerError(e)
     }
 }
