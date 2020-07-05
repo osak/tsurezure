@@ -1,5 +1,5 @@
 // Injected by DefinePlugin
-declare var API_BASE: string;
+declare var URL_BASE: string;
 
 import { Model } from '../model';
 
@@ -13,7 +13,17 @@ export type SinglePostResponse = {
 }
 
 export async function fetchApi<T>(api: string): Promise<T> {
-    const url = API_BASE + normalize(api);
+    const url = URL_BASE + '/api' + normalize(api);
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw `Failed to fetch ${url}: ${response.status} ${response.statusText}`;
+    }
+    const result = await response.json();
+    return result as T;
+}
+
+export async function fetchAdminApi<T>(api: string): Promise<T> {
+    const url = URL_BASE + '/admin/api' + normalize(api);
     const response = await fetch(url);
     if (!response.ok) {
         throw `Failed to fetch ${url}: ${response.status} ${response.statusText}`;
