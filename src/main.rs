@@ -1,6 +1,7 @@
 use actix_files as fs;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, get, post, Error, dev::ServiceRequest};
 use actix_cors::Cors;
+use actix_identity::{Identity, CookieIdentityPolicy, IdentityService};
 use actix_web_httpauth::{middleware::HttpAuthentication, extractors::basic::BasicAuth};
 use tokio_postgres::{tls};
 use deadpool_postgres::{Pool};
@@ -71,13 +72,23 @@ async fn get_posts(pool: web::Data<Pool>, web::Query(query): web::Query<PostsReq
     Ok(web::Json(response))
 }
 
-#[get("/posts/new")]
-async fn create_post_page() -> Result<fs::NamedFile, std::io::Error> {
-    fs::NamedFile::open("asset/post.html")
+#[get("/admin/posts/new")]
+async fn create_post_page(id: Identity) -> Result<fs::NamedFile, Error> {
+    match id.identity() {
+        Some(name) if name == "admin" => fs::NamedFile::open("asset/post.html").map_err(|e| actix_web::error::ErrorInternalServerError(e)),
+        Some(_) => Err(actix_web::error::ErrorForbidden("Admin only".to_owned())),
+        _ => Err(actix_web::error::ErrorUnauthorized("Auth needed".to_owned()))
+    }
 }
 
-#[post("/posts/new")]
-async fn create_post(payload: web::Form<CreatePostRequest>, pool: web::Data<Pool>) -> Result<web::Json<CreatePostResponse>, Error> {
+#[post("/admin/posts/new")]
+async fn create_post(payload: web::Form<CreatePostRequest>, pool: web::Data<Pool>, id: Identity) -> Result<web::Json<CreatePostResponse>, Error> {
+    match id.identity() {
+        Some(name) if name == "admin" => Ok(()),
+        Some(_) => Err(actix_web::error::ErrorForbidden("Admin only".to_owned())),
+        None => Err(actix_web::error::ErrorUnauthorized("Auth needed".to_owned()))
+    }?;
+
     let post = Post { id: 0, body: payload.body.to_owned(), posted_at: chrono::Utc::now() };
     let result = posts::save(&*pool.get().await.unwrap(), post).await;
     let response = match result {
@@ -104,11 +115,6 @@ async fn default_route(req: HttpRequest) -> Result<HttpResponse, std::io::Error>
 }
 
 async fn validator(req: ServiceRequest, cred: BasicAuth) -> Result<ServiceRequest, Error> {
-    let path = req.path();
-    if !path.starts_with("/admin") {
-        return Ok(req)
-    }
-
     let admin_user = std::env::var("ADMIN_USER").expect("ADMIN_USER");
     let admin_pass = std::env::var("ADMIN_PASS").expect("ADMIN_PASS");
     let cred_user = cred.user_id();
@@ -118,6 +124,12 @@ async fn validator(req: ServiceRequest, cred: BasicAuth) -> Result<ServiceReques
     } else {
         Err(actix_web::error::ErrorUnauthorized("Auth failed"))
     }
+}
+
+#[get("/login")]
+async fn login(id: Identity) -> HttpResponse {
+    id.remember("admin".to_owned());
+    HttpResponse::Ok().finish()
 }
 
 #[actix_rt::main]
@@ -137,17 +149,22 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         let auth = HttpAuthentication::basic(validator);
+        let identity = IdentityService::new(
+            CookieIdentityPolicy::new(&[0; 32])
+                .name("auth")
+                .secure(false));
+        let cors = Cors::new().finish();
         App::new()
-            .wrap(
-                Cors::new()
-                    .finish())
+            .wrap(cors)
+            .wrap(identity)
             .data(pool.clone())
             .service(recent_posts)
             .service(get_posts)
-            .service(web::scope("/admin")
+            .service(create_post_page)
+            .service(create_post)
+            .service(web::scope("/")
                 .wrap(auth)
-                .service(create_post_page)
-                .service(create_post))
+                .service(login))
             .default_service(web::resource("").route(web::get().to(default_route)))
     })
     .bind(format!("0.0.0.0:{}", port))?

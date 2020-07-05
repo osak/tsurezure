@@ -13,6 +13,7 @@ actix-rt = "1.0"
 actix-cors = "0.2.0"
 actix-files = "0.2.2"
 actix-web-httpauth = "0.4.1"
+actix-identity = "0.2.1"
 chrono = { version = "0.4", features = ["serde"] }
 tokio-postgres = { version = "0.5.4", features = ["with-chrono-0_4"] }
 deadpool-postgres = "0.5.5"
