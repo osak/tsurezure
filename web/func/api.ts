@@ -8,6 +8,10 @@ export type PostsResponse = {
     next: number | null
 }
 
+export type AdminGetPostResponse = {
+    post: Model.Post,
+}
+
 export type SinglePostResponse = {
     post: Model.Post
 }

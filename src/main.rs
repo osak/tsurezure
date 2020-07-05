@@ -34,6 +34,16 @@ struct PostsResponse {
     next: Option<i32>,
 }
 
+#[derive(Deserialize)]
+struct AdminGetPostInfo {
+    id: i32,
+}
+
+#[derive(Serialize)]
+struct AdminGetPostResponse {
+    post: view::RawPost
+}
+
 #[get("/api/posts/recent")]
 async fn recent_posts(pool: web::Data<Pool>) -> Result<web::Json<Vec<view::Post>>, Error> {
     let raw_posts = posts::find_recent(&*pool.get().await.unwrap(), 5).await.unwrap();
@@ -72,7 +82,25 @@ async fn get_posts(pool: web::Data<Pool>, web::Query(query): web::Query<PostsReq
     Ok(web::Json(response))
 }
 
-#[get("/admin/posts/new")]
+#[get("/api/posts/{id}")]
+async fn admin_get_post(pool: web::Data<Pool>, info: web::Path<AdminGetPostInfo>, id: Identity) -> Result<web::Json<AdminGetPostResponse>, actix_web::Error> {
+    match id.identity() {
+        Some(name) if name == "admin" => Ok(()),
+        Some(_) => Err(actix_web::error::ErrorForbidden("Admin only".to_owned())),
+        _ => Err(actix_web::error::ErrorUnauthorized("Auth needed".to_owned()))
+    }?;
+
+    let client = pool.get().await.unwrap();
+    let post = posts::find(&*client, info.id, 1).await.map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+    if post.len() > 0 {
+        let raw_post: view::RawPost = post[0].clone().into();
+        Ok(web::Json(AdminGetPostResponse{post: raw_post}))
+    } else {
+        Err(actix_web::error::ErrorNotFound("Not found"))
+    }
+}
+
+#[get("/posts/new")]
 async fn create_post_page(id: Identity) -> Result<fs::NamedFile, Error> {
     match id.identity() {
         Some(name) if name == "admin" => fs::NamedFile::open("asset/post.html").map_err(|e| actix_web::error::ErrorInternalServerError(e)),
@@ -81,7 +109,7 @@ async fn create_post_page(id: Identity) -> Result<fs::NamedFile, Error> {
     }
 }
 
-#[post("/admin/posts/new")]
+#[post("/posts/new")]
 async fn create_post(payload: web::Form<CreatePostRequest>, pool: web::Data<Pool>, id: Identity) -> Result<web::Json<CreatePostResponse>, Error> {
     match id.identity() {
         Some(name) if name == "admin" => Ok(()),
@@ -163,10 +191,12 @@ async fn main() -> std::io::Result<()> {
             .service(recent_posts)
             .service(get_posts)
             .service(create_post_page)
-            .service(create_post)
             .service(web::scope("/login")
                 .wrap(auth)
                 .service(login))
+            .service(web::scope("/admin")
+                .service(admin_get_post)
+                .service(create_post))
             .default_service(web::resource("").route(web::get().to(default_route)))
     })
     .bind(format!("0.0.0.0:{}", port))?

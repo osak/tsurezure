@@ -1,7 +1,7 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import { useState, useEffect } from 'react';
-import { fetchAdminApi, PostsResponse } from '../../func/api';
+import { fetchAdminApi, AdminGetPostResponse } from '../../func/api';
 import { RouteComponentProps } from '@reach/router';
 
 type Props = RouteComponentProps & {
@@ -13,9 +13,9 @@ export function Edit(props: Props) {
     const [body, setBody] = useState('');
 
     useEffect(() => {
-        fetchAdminApi<PostsResponse>(`/posts/${props.id}`)
+        fetchAdminApi<AdminGetPostResponse>(`/posts/${props.id}`)
             .then((resp) => {
-                const post = resp.posts[0];
+                const post = resp.post;
                 setId(post.id);
                 setBody(post.body);
             })

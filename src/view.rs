@@ -24,3 +24,20 @@ impl From<model::Post> for Post {
         }
     }
 }
+
+#[derive(Serialize)]
+pub struct RawPost {
+    pub id: i32,
+    pub body: String,
+    pub posted_at: DateTime<Utc>,
+}
+
+impl From<model::Post> for RawPost {
+    fn from(other: model::Post) -> RawPost {
+        RawPost {
+            id: other.id,
+            body: other.body,
+            posted_at: other.posted_at
+        }
+    }
+}
