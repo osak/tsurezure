@@ -11,6 +11,7 @@ type Props = RouteComponentProps & {
 export function Edit(props: Props) {
     const [id, setId] = useState(0);
     const [body, setBody] = useState('');
+    const [message, setMessage] = useState('');
 
     useEffect(() => {
         fetchAdminApi<AdminGetPostResponse>(`/posts/${props.id}`)
@@ -22,12 +23,21 @@ export function Edit(props: Props) {
     }, []);
 
     function update() {
-        console.log(id);
-        console.log(body);
+        const payload = {
+            id,
+            body,
+        }
+        fetchAdminApi(`/posts/${props.id}`, {method: 'PUT', body: JSON.stringify(payload)})
+            .then((resp) => setMessage("ok"))
+            .catch((e) => {
+                console.error(e);
+                setMessage(e)
+            });
     }
 
     return <div className="edit">
         <textarea value={body} onChange={(e) => setBody(e.currentTarget.value)} />
         <input type="submit" value="Submit" onClick={(e) => update()} />
+        <div className="edit__message">{message}</div>
     </div>;
 }
