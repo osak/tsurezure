@@ -164,6 +164,7 @@ async fn default_route(req: HttpRequest) -> Result<HttpResponse, std::io::Error>
 
     match req.path() {
         "/index.bundle.js" => fs::NamedFile::open("web-dist/index.bundle.js").map(|n| n.into_response(&req).unwrap()),
+        "/admin.bundle.js" => fs::NamedFile::open("web-dist/admin.bundle.js").map(|n| n.into_response(&req).unwrap()),
         "/style.css" => fs::NamedFile::open("web-dist/style.css").map(|n| n.into_response(&req).unwrap()),
         _ => fs::NamedFile::open("web-dist/index.html")
               .map(|n| {
@@ -175,12 +176,20 @@ async fn default_route(req: HttpRequest) -> Result<HttpResponse, std::io::Error>
     }
 }
 
-async fn default_admin_route(req: HttpRequest) -> Result<HttpResponse, std::io::Error> {
+async fn default_admin_route(req: HttpRequest, id: Identity) -> Result<HttpResponse, Error> {
     use actix_web::http::header::{HeaderName, HeaderValue};
 
+    match id.identity() {
+        Some(name) if name == "admin" => Ok(()),
+        Some(_) => Err(actix_web::error::ErrorForbidden("Admin only".to_owned())),
+        None => Err(actix_web::error::ErrorUnauthorized("Auth needed".to_owned()))
+    }?;
+
+
     match req.path() {
-        "/admin.bundle.js" => fs::NamedFile::open("web-dist/admin.bundle.js").map(|n| n.into_response(&req).unwrap()),
-        "/style.css" => fs::NamedFile::open("web-dist/style.css").map(|n| n.into_response(&req).unwrap()),
+        "/style.css" => fs::NamedFile::open("web-dist/style.css")
+            .map(|n| n.into_response(&req).unwrap())
+            .map_err(|e| actix_web::error::ErrorInternalServerError(e)),
         _ => fs::NamedFile::open("web-dist/admin.html")
               .map(|n| {
                   let mut resp = n.into_response(&req).unwrap();
@@ -188,6 +197,7 @@ async fn default_admin_route(req: HttpRequest) -> Result<HttpResponse, std::io::
                   headers.append(HeaderName::from_static("cache-control"), HeaderValue::from_static("no-cache"));
                   resp
               })
+              .map_err(|e| actix_web::error::ErrorInternalServerError(e))
     }
 }
 
