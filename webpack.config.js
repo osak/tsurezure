@@ -15,7 +15,10 @@ if (process.env.NODE_ENV == 'production') {
 }
  
 module.exports = {
-    entry: './web/index.tsx',
+    entry: {
+        index: './web/index.tsx',
+        admin: './web/index_admin.tsx',
+    },
     devtool: 'source-map',
     devServer: {
         host: '0.0.0.0',
@@ -35,15 +38,24 @@ module.exports = {
         extensions: ['.tsx', '.ts', '.js'],
     },
     output: {
-        filename: 'bundle.js',
+        filename: '[name].bundle.js',
         path: path.resolve(__dirname, 'web-dist'),
         publicPath: '/',
     },
     plugins: [
         new HtmlWebpackPlugin({
+            chunks: ['index'],
+            filename: 'index.html',
             template: './web/index.html',
             hash: true,
         }),
+        new HtmlWebpackPlugin({
+            chunks: ['admin'],
+            filename: 'admin.html',
+            template: './web/index.html',
+            hash: true,
+        }),
+
         new webpack.DefinePlugin(constants),
         new CopyPlugin({
             patterns: [
