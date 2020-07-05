@@ -10,12 +10,12 @@ pub struct Post {
     pub posted_at: DateTime<Utc>,
 }
 
-impl Into<Post> for model::Post {
-    fn into(self: model::Post) -> Post {
+impl From<model::Post> for Post {
+    fn from(other: model::Post) -> Post {
         Post {
-            id: self.id,
-            body: self.body,
-            posted_at: self.posted_at
+            id: other.id,
+            body: other.body,
+            posted_at: other.posted_at
         }
     }
 }
