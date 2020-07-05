@@ -8,6 +8,7 @@ fn parse_row(row: &Row) -> Post {
         id: row.get("id"),
         body: row.get("body"),
         posted_at: row.get("posted_at"),
+        updated_at: row.get("updated_at"),
     }
 }
 
@@ -31,7 +32,7 @@ pub async fn save(client: &ClientWrapper, post: Post) -> Result<i32, DBError> {
 }
 
 pub async fn update(client: &ClientWrapper, post: &Post) -> Result<i32, DBError> {
-    let rows: Vec<Row> = client.query("UPDATE posts SET body=$1 WHERE id=$2 RETURNING id", &[&post.body, &post.id])
+    let rows: Vec<Row> = client.query("UPDATE posts SET (body, updated_at) = ($1, $2) WHERE id=$3 RETURNING id", &[&post.body, &post.updated_at, &post.id])
         .await
         .map_err(|err| DBError::new(&format!("Failed to update a post {}", post.id), err))?;
     Ok(rows[0].get(0))

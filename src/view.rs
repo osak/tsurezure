@@ -8,6 +8,7 @@ pub struct Post {
     pub id: i32,
     pub body: String,
     pub posted_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 impl From<model::Post> for Post {
@@ -20,7 +21,8 @@ impl From<model::Post> for Post {
         Post {
             id: other.id,
             body: formatted_body,
-            posted_at: other.posted_at
+            posted_at: other.posted_at,
+            updated_at: other.updated_at,
         }
     }
 }
@@ -30,6 +32,7 @@ pub struct RawPost {
     pub id: i32,
     pub body: String,
     pub posted_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 impl From<model::Post> for RawPost {
@@ -37,7 +40,8 @@ impl From<model::Post> for RawPost {
         RawPost {
             id: other.id,
             body: other.body,
-            posted_at: other.posted_at
+            posted_at: other.posted_at,
+            updated_at: other.updated_at,
         }
     }
 }

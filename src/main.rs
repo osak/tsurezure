@@ -123,7 +123,7 @@ async fn create_post(payload: web::Form<CreatePostRequest>, pool: web::Data<Pool
         None => Err(actix_web::error::ErrorUnauthorized("Auth needed".to_owned()))
     }?;
 
-    let post = Post { id: 0, body: payload.body.to_owned(), posted_at: chrono::Utc::now() };
+    let post = Post { id: 0, body: payload.body.to_owned(), posted_at: chrono::Utc::now(), updated_at: None };
     let result = posts::save(&*pool.get().await.unwrap(), post).await;
     let response = match result {
         Ok(id) => CreatePostResponse { id: Some(id), error: None },
@@ -147,7 +147,8 @@ async fn update_post(payload: web::Json<UpdatePostRequest>, pool: web::Data<Pool
         let new_post = Post {
             id: payload.id,
             body: payload.body.to_owned(),
-            posted_at: post.posted_at
+            posted_at: post.posted_at,
+            updated_at: Some(chrono::Utc::now()),
         };
         posts::update(&*client, &new_post)
             .await
