@@ -28,7 +28,7 @@ export async function fetchApi<T>(api: string): Promise<T> {
 
 export async function fetchAdminApi<T>(api: string): Promise<T> {
     const url = URL_BASE + '/admin/api' + normalize(api);
-    const response = await fetch(url);
+    const response = await fetch(url, { credentials: 'include' });
     if (!response.ok) {
         throw `Failed to fetch ${url}: ${response.status} ${response.statusText}`;
     }

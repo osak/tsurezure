@@ -183,7 +183,7 @@ async fn main() -> std::io::Result<()> {
             CookieIdentityPolicy::new(&cookie_key.as_bytes())
                 .name("auth")
                 .secure(false));
-        let cors = Cors::new().finish();
+        let cors = Cors::new().supports_credentials().finish();
         App::new()
             .wrap(cors)
             .wrap(identity)

@@ -22,7 +22,12 @@ module.exports = {
     devtool: 'source-map',
     devServer: {
         host: '0.0.0.0',
-        historyApiFallback: true,
+        historyApiFallback: {
+            rewrites: [
+                { from: /^\/admin/, to: '/admin.html' },
+                { from: /./, to: '/index.html' }
+            ]
+        }
     },
 
     module: {
