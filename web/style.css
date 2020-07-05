@@ -25,7 +25,7 @@
     margin: 5px 0;
 }
 
-.posted-at {
+.posted-at, .updated-at {
     color: gray;
     font-size: 80%;
 }
