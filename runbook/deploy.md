@@ -8,9 +8,3 @@ Auth cookie is encrypted using `COOKIE_KEY`. It must be at least 32 characters l
 
 ## Server deploy
 `git push heroku master`
-
-## Static web deploy
-```
-$ npx webpack --config webpack.prod.js
-$ aws s3 cp --recursive web-dist/ s3://tsurezure.osak.jp/
-```
