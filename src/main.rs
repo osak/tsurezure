@@ -126,7 +126,7 @@ async fn validator(req: ServiceRequest, cred: BasicAuth) -> Result<ServiceReques
     }
 }
 
-#[get("/login")]
+#[get("/")]
 async fn login(id: Identity) -> HttpResponse {
     id.remember("admin".to_owned());
     HttpResponse::Ok().finish()
@@ -164,7 +164,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_posts)
             .service(create_post_page)
             .service(create_post)
-            .service(web::scope("/")
+            .service(web::scope("/login")
                 .wrap(auth)
                 .service(login))
             .default_service(web::resource("").route(web::get().to(default_route)))
