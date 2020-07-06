@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use pulldown_cmark::{Parser, html};
 
 use crate::model;
 
@@ -13,14 +14,13 @@ pub struct Post {
 
 impl From<model::Post> for Post {
     fn from(other: model::Post) -> Post {
-        let formatted_body = other.body.split("\n")
-            .into_iter()
-            .map(|line| format!("<p>{}</p>", line))
-            .collect::<Vec<String>>()
-            .join("");
+        let parser = Parser::new(&other.body);
+        let mut buf = String::new();
+        html::push_html(&mut buf, parser);
+
         Post {
             id: other.id,
-            body: formatted_body,
+            body: buf,
             posted_at: other.posted_at,
             updated_at: other.updated_at,
         }

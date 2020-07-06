@@ -19,3 +19,4 @@ tokio-postgres = { version = "0.5.4", features = ["with-chrono-0_4"] }
 deadpool-postgres = "0.5.5"
 url = "2.1.1"
 serde = "1.0.111"
+pulldown-cmark = "0.7.2"
