@@ -24,10 +24,6 @@ RUN apt-get update \
     # Install lldb, vadimcn.vscode-lldb VSCode extension dependencies
     && apt-get install -y lldb python3-minimal libpython3.7 \
     #
-    # Install Rust components
-    && rustup update 2>&1 \
-    && rustup component add rls rust-analysis rust-src rustfmt clippy 2>&1 \
-    #
     # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
     && groupadd --gid $USER_GID $USERNAME \
     && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME \
@@ -41,9 +37,22 @@ RUN apt-get update \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/
 
+# Install Rust components
+USER ${USERNAME}
+RUN rustup update 2>&1 \
+    && rustup component add rls rust-analysis rust-src rustfmt clippy 2>&1
+
+USER root
+
 # Installl nodejs
 RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - \
     && apt-get install -y nodejs \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /home/$USERNAME/.vscode-server/extensions \
+        /home/$USERNAME/.vscode-server-insiders/extensions \
+    && chown -R $USERNAME \
+        /home/$USERNAME/.vscode-server \
+        /home/$USERNAME/.vscode-server-insiders
