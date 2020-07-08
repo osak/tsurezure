@@ -57,8 +57,10 @@ struct UpdatePostRequest {
 type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 #[get("/api/posts/recent")]
-async fn recent_posts(pool: web::Data<Pool>) -> Result<web::Json<Vec<view::Post>>, Error> {
-    let raw_posts = posts::find_recent(&*pool.get().await.unwrap(), 5).await.unwrap();
+async fn recent_posts(pool: web::Data<DbPool>) -> Result<web::Json<Vec<view::Post>>, Error> {
+    use schema::posts::dsl::*;
+
+    let raw_posts = posts.order(id.desc()).limit(5).load::<Post>(&pool.get().unwrap()).unwrap();
     let view_posts: Vec<view::Post> = raw_posts.into_iter()
       .map(|p| p.into())
       .collect();
@@ -66,25 +68,27 @@ async fn recent_posts(pool: web::Data<Pool>) -> Result<web::Json<Vec<view::Post>
 }
 
 #[get("/api/posts")]
-async fn get_posts(pool: web::Data<Pool>, web::Query(query): web::Query<PostsRequest>) -> Result<web::Json<PostsResponse>, Error> {
+async fn get_posts(pool: web::Data<DbPool>, web::Query(query): web::Query<PostsRequest>) -> Result<web::Json<PostsResponse>, Error> {
+    use schema::posts::dsl::*;
+
     let limit = query.limit.unwrap_or(5);
     if limit > 50 {
         return Err(actix_web::error::ErrorBadRequest("limit must be <= 50"))
     }
-    let client = pool.get().await.unwrap();
+    let client = pool.get().unwrap();
 
-    let mut posts = match query.from {
-        Some(from_id) => posts::find(&*client, from_id, limit + 1).await,
-        None => posts::find_recent(&*client, limit + 1).await,
+    let mut raw_posts = match query.from {
+        Some(from_id) => posts.find(from_id).load::<Post>(&client),
+        None => posts.order(id.desc()).limit((limit + 1) as i64).load::<Post>(&*client),
     }.unwrap();
-    let next_id = if posts.len() == (limit + 1) as usize {
-        Some(posts.last().unwrap().id)
+    let next_id = if raw_posts.len() == (limit + 1) as usize {
+        Some(raw_posts.last().unwrap().id)
     } else {
         None
     };
 
-    posts.truncate(limit as usize);
-    let view_posts: Vec<view::Post> = posts.into_iter()
+    raw_posts.truncate(limit as usize);
+    let view_posts: Vec<view::Post> = raw_posts.into_iter()
       .map(|p| p.into())
       .collect();
     let response = PostsResponse {
@@ -95,15 +99,17 @@ async fn get_posts(pool: web::Data<Pool>, web::Query(query): web::Query<PostsReq
 }
 
 #[get("/api/posts/{id}")]
-async fn admin_get_post(pool: web::Data<Pool>, info: web::Path<AdminGetPostInfo>, id: Identity) -> Result<web::Json<AdminGetPostResponse>, actix_web::Error> {
+async fn admin_get_post(pool: web::Data<DbPool>, info: web::Path<AdminGetPostInfo>, id: Identity) -> Result<web::Json<AdminGetPostResponse>, actix_web::Error> {
+    use schema::posts::dsl::posts;
+
     match id.identity() {
         Some(name) if name == "admin" => Ok(()),
         Some(_) => Err(actix_web::error::ErrorForbidden("Admin only".to_owned())),
         _ => Err(actix_web::error::ErrorUnauthorized("Auth needed".to_owned()))
     }?;
 
-    let client = pool.get().await.unwrap();
-    let post = posts::find(&*client, info.id, 1).await.map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+    let client = pool.get().unwrap();
+    let post = posts.find(info.id).load::<Post>(&client).map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
     if post.len() > 0 {
         let raw_post: view::RawPost = post[0].clone().into();
         Ok(web::Json(AdminGetPostResponse{post: raw_post}))
@@ -122,47 +128,47 @@ async fn create_post_page(id: Identity) -> Result<fs::NamedFile, Error> {
 }
 
 #[post("/posts/new")]
-async fn create_post(payload: web::Form<CreatePostRequest>, pool: web::Data<Pool>, id: Identity) -> Result<web::Json<CreatePostResponse>, Error> {
+async fn create_post(payload: web::Form<CreatePostRequest>, pool: web::Data<DbPool>, id: Identity) -> Result<web::Json<CreatePostResponse>, Error> {
+    use schema::posts::dsl::posts;
+
     match id.identity() {
         Some(name) if name == "admin" => Ok(()),
         Some(_) => Err(actix_web::error::ErrorForbidden("Admin only".to_owned())),
         None => Err(actix_web::error::ErrorUnauthorized("Auth needed".to_owned()))
     }?;
 
-    let post = Post { id: 0, body: payload.body.to_owned(), posted_at: chrono::Utc::now(), updated_at: None };
-    let result = posts::save(&*pool.get().await.unwrap(), post).await;
+    let post = NewPost { body: payload.body.to_owned(), posted_at: chrono::Utc::now() };
+    let result = diesel::insert_into(posts)
+        .values(&post)
+        .get_result::<Post>(&pool.get().unwrap());
     let response = match result {
-        Ok(id) => CreatePostResponse { id: Some(id), error: None },
+        Ok(p) => CreatePostResponse { id: Some(p.id), error: None },
         Err(err) => CreatePostResponse { id: None, error: Some(format!("{}", err)) }
     };
     Ok(web::Json(response))
 }
 
 #[put("/api/posts/{id}")]
-async fn update_post(payload: web::Json<UpdatePostRequest>, pool: web::Data<Pool>, id: Identity) -> Result<web::Json<CreatePostResponse>, Error> {
+async fn update_post(payload: web::Json<UpdatePostRequest>, pool: web::Data<DbPool>, id: Identity) -> Result<web::Json<CreatePostResponse>, Error> {
+    use schema::posts::dsl::{self, posts};
+
     match id.identity() {
         Some(name) if name == "admin" => Ok(()),
         Some(_) => Err(actix_web::error::ErrorForbidden("Admin only".to_owned())),
         None => Err(actix_web::error::ErrorUnauthorized("Auth needed".to_owned()))
     }?;
 
-    let client = pool.get().await.unwrap();
-    let posts = posts::find(&*client, payload.id, 1).await?;
-    if posts.len() > 0 {
-        let post = &posts[0];
-        let new_post = Post {
-            id: payload.id,
-            body: payload.body.to_owned(),
-            posted_at: post.posted_at,
-            updated_at: Some(chrono::Utc::now()),
-        };
-        posts::update(&*client, &new_post)
-            .await
-            .map(|id| web::Json(CreatePostResponse { id: Some(id), error: None }))
-            .map_err(|e| e.into())
-    } else {
-        Err(actix_web::error::ErrorNotFound("Not found"))
-    }
+    let client = pool.get().unwrap();
+    
+    let result = diesel::update(posts.find(payload.id))
+        .set((
+            dsl::body.eq(&payload.body),
+            dsl::updated_at.eq(chrono::Utc::now())
+        ))
+        .get_result::<Post>(&client);
+
+    result.map(|r| web::Json(CreatePostResponse { id: Some(r.id), error: None }))
+        .map_err(|_| actix_web::error::ErrorNotFound("Not found"))
 }
 
 async fn default_route(req: HttpRequest) -> Result<HttpResponse, std::io::Error> {
@@ -240,16 +246,6 @@ async fn diesel_test(pool: web::Data<DbPool>) -> Result<web::Json<Vec<view::Post
 async fn main() -> std::io::Result<()> {
     let port: u32 = std::env::var("PORT").unwrap().parse().unwrap();
     let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
-    let url = Url::parse(&db_url).expect("Url::parse");
-    let mut path_segments = url.path_segments().expect("path segments");
-
-    let mut cfg = deadpool_postgres::Config::default();
-    cfg.user = Some(url.username().to_owned());
-    cfg.password = Some(url.password().unwrap().to_owned());
-    cfg.dbname = Some(path_segments.next().unwrap().to_owned());
-    cfg.host = Some(url.host_str().unwrap().to_owned());
-    cfg.port = Some(url.port().unwrap());
-    let pool = cfg.create_pool(tls::NoTls).unwrap();
 
     let cookie_key = std::env::var("COOKIE_KEY").expect("COOKIE_KEY");
 
@@ -268,7 +264,6 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(cors)
             .wrap(identity)
-            .data(pool.clone())
             .data(diesel_pool.clone())
             .service(recent_posts)
             .service(get_posts)
