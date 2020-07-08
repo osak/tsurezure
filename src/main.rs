@@ -7,9 +7,12 @@ use tokio_postgres::{tls};
 use deadpool_postgres::{Pool};
 use url::{Url};
 use serde::{Serialize, Deserialize};
+use diesel::prelude::*;
+use diesel::pg::PgConnection;
 use tsurezure::dao::*;
 use tsurezure::model::*;
 use tsurezure::view;
+use tsurezure::schema;
 
 #[derive(Deserialize, Debug)]
 struct CreatePostRequest {
@@ -219,6 +222,19 @@ async fn login(id: Identity) -> HttpResponse {
     HttpResponse::Ok().finish()
 }
 
+#[get("/debug/diesel_test")]
+async fn diesel_test() -> Result<web::Json<Vec<view::Post>>, Error> {
+    use schema::posts::dsl::*;
+
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
+    let connection = PgConnection::establish(&db_url).expect("connect");
+    let results = posts.filter(schema::posts::id.gt(1))
+        .limit(5)
+        .load::<Post>(&connection)
+        .expect("load");
+    Ok(web::Json(results.into_iter().map(|i| i.into()).collect()))
+}
+
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     let port: u32 = std::env::var("PORT").unwrap().parse().unwrap();
@@ -250,6 +266,7 @@ async fn main() -> std::io::Result<()> {
             .service(recent_posts)
             .service(get_posts)
             .service(create_post_page)
+            .service(diesel_test)
             .service(web::scope("/login")
                 .wrap(auth)
                 .service(login))

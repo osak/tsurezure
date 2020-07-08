@@ -1,8 +1,9 @@
 extern crate chrono;
 
 use chrono::{DateTime, Utc};
+use diesel::Queryable;
 
-#[derive(Clone)]
+#[derive(Clone, Queryable)]
 pub struct Post {
     pub id: i32,
     pub body: String,
