@@ -3,14 +3,10 @@ use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, get, post, put,
 use actix_cors::Cors;
 use actix_identity::{Identity, CookieIdentityPolicy, IdentityService};
 use actix_web_httpauth::{middleware::HttpAuthentication, extractors::basic::BasicAuth};
-use tokio_postgres::{tls};
-use deadpool_postgres::{Pool};
-use url::{Url};
 use serde::{Serialize, Deserialize};
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use diesel::r2d2::{self, ConnectionManager};
-use tsurezure::dao::*;
 use tsurezure::model::*;
 use tsurezure::view;
 use tsurezure::schema;

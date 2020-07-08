@@ -15,9 +15,6 @@ actix-files = "0.2.2"
 actix-web-httpauth = "0.4.1"
 actix-identity = "0.2.1"
 chrono = { version = "0.4", features = ["serde"] }
-tokio-postgres = { version = "0.5.4", features = ["with-chrono-0_4"] }
-deadpool-postgres = "0.5.5"
-url = "2.1.1"
 serde = "1.0.111"
 pulldown-cmark = "0.7.2"
 diesel = { version = "1.4.4", features = ["postgres", "chrono", "r2d2"] }
