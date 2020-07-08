@@ -20,4 +20,4 @@ deadpool-postgres = "0.5.5"
 url = "2.1.1"
 serde = "1.0.111"
 pulldown-cmark = "0.7.2"
-diesel = { version = "1.4.4", features = ["postgres", "chrono"] }
+diesel = { version = "1.4.4", features = ["postgres", "chrono", "r2d2"] }

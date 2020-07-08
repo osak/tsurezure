@@ -9,6 +9,7 @@ use url::{Url};
 use serde::{Serialize, Deserialize};
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
+use diesel::r2d2::{self, ConnectionManager};
 use tsurezure::dao::*;
 use tsurezure::model::*;
 use tsurezure::view;
@@ -52,6 +53,8 @@ struct UpdatePostRequest {
     id: i32,
     body: String,
 }
+
+type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 #[get("/api/posts/recent")]
 async fn recent_posts(pool: web::Data<Pool>) -> Result<web::Json<Vec<view::Post>>, Error> {
@@ -223,14 +226,12 @@ async fn login(id: Identity) -> HttpResponse {
 }
 
 #[get("/debug/diesel_test")]
-async fn diesel_test() -> Result<web::Json<Vec<view::Post>>, Error> {
+async fn diesel_test(pool: web::Data<DbPool>) -> Result<web::Json<Vec<view::Post>>, Error> {
     use schema::posts::dsl::*;
 
-    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
-    let connection = PgConnection::establish(&db_url).expect("connect");
     let results = posts.filter(schema::posts::id.gt(1))
         .limit(5)
-        .load::<Post>(&connection)
+        .load::<Post>(&*pool.get().unwrap())
         .expect("load");
     Ok(web::Json(results.into_iter().map(|i| i.into()).collect()))
 }
@@ -252,6 +253,11 @@ async fn main() -> std::io::Result<()> {
 
     let cookie_key = std::env::var("COOKIE_KEY").expect("COOKIE_KEY");
 
+    let manager = ConnectionManager::<PgConnection>::new(db_url);
+    let diesel_pool = r2d2::Pool::builder()
+      .build(manager)
+      .expect("pool");
+
     HttpServer::new(move || {
         let auth = HttpAuthentication::basic(validator);
         let identity = IdentityService::new(
@@ -263,6 +269,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .wrap(identity)
             .data(pool.clone())
+            .data(diesel_pool.clone())
             .service(recent_posts)
             .service(get_posts)
             .service(create_post_page)
