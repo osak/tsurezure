@@ -74,7 +74,7 @@ async fn get_posts(pool: web::Data<DbPool>, web::Query(query): web::Query<PostsR
     let client = pool.get().unwrap();
 
     let mut raw_posts = match query.from {
-        Some(from_id) => posts.find(from_id).load::<Post>(&client),
+        Some(from_id) => posts.filter(id.le(from_id)).order(id.desc()).load::<Post>(&client),
         None => posts.order(id.desc()).limit((limit + 1) as i64).load::<Post>(&*client),
     }.unwrap();
     let next_id = if raw_posts.len() == (limit + 1) as usize {
